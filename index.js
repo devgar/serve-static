@@ -62,7 +62,9 @@ function serveStatic (root, options) {
 
   // setup options for send
   opts.maxage = opts.maxage || opts.maxAge || 0
-  if(typeof root == 'object')
+  
+  // Manage multihost
+  if(typeof root === 'object')
   {
     if(!root.default) throw new Error("root doesn't cotain default path")
     opts.root = resolve(root.default)
@@ -100,7 +102,7 @@ function serveStatic (root, options) {
     
     var sendOpts = Object.create(opts || null)
     
-    if(typeof root == 'object')
+    if(typeof root === 'object')
     {
       if( root[req.headers.host] )
       { // Exists
@@ -108,7 +110,7 @@ function serveStatic (root, options) {
       }
       else
       {
-        // Throw Error or send Default
+        // TODO: Could Throw Error. Current sends 'default'
       }
     }
 

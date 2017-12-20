@@ -6,6 +6,7 @@ var request = require('supertest')
 var serveStatic = require('..')
 
 var fixtures = path.join(__dirname, '/fixtures')
+var other = path.join(__dirname, '/other')
 var relative = path.relative(process.cwd(), fixtures)
 
 var skipRelative = ~relative.indexOf('..') || path.resolve(relative) === relative
@@ -14,7 +15,7 @@ describe('serveStatic()', function () {
   describe('basic operations', function () {
     var server
     before(function () {
-      server = createServer( {default: relative})
+      server = createServer( {default: fixtures})
     })
 
     it('should require root path', function () {
@@ -145,14 +146,14 @@ describe('serveStatic()', function () {
   describe('acceptRanges', function () {
     describe('when false', function () {
       it('should not include Accept-Ranges', function (done) {
-        request(createServer(fixtures, {'acceptRanges': false}))
+        request(createServer({default: fixtures}, {'acceptRanges': false}))
         .get('/nums')
         .expect(shouldNotHaveHeader('Accept-Ranges'))
         .expect(200, '123456789', done)
       })
 
       it('should ignore Rage request header', function (done) {
-        request(createServer(fixtures, {'acceptRanges': false}))
+        request(createServer({default: fixtures}, {'acceptRanges': false}))
         .get('/nums')
         .set('Range', 'bytes=0-3')
         .expect(shouldNotHaveHeader('Accept-Ranges'))
@@ -170,7 +171,7 @@ describe('serveStatic()', function () {
       })
 
       it('should obey Rage request header', function (done) {
-        request(createServer(fixtures, {'acceptRanges': true}))
+        request(createServer({default: fixtures}, {'acceptRanges': true}))
         .get('/nums')
         .set('Range', 'bytes=0-3')
         .expect('Accept-Ranges', 'bytes')
@@ -190,7 +191,7 @@ describe('serveStatic()', function () {
       })
 
       it('should ignore maxAge', function (done) {
-        request(createServer(fixtures, {'cacheControl': false, 'maxAge': 12000}))
+        request(createServer({default: fixtures}, {'cacheControl': false, 'maxAge': 12000}))
         .get('/nums')
         .expect(shouldNotHaveHeader('Cache-Control'))
         .expect(200, '123456789', done)
@@ -209,7 +210,7 @@ describe('serveStatic()', function () {
 
   describe('extensions', function () {
     it('should be not be enabled by default', function (done) {
-      var server = createServer(fixtures)
+      var server = createServer({default: fixtures})
 
       request(server)
       .get('/todo')
@@ -225,7 +226,7 @@ describe('serveStatic()', function () {
     })
 
     it('should support disabling extensions', function (done) {
-      var server = createServer(fixtures, {'extensions': false})
+      var server = createServer({default: fixtures}, {'extensions': false})
 
       request(server)
       .get('/todo')
@@ -258,7 +259,7 @@ describe('serveStatic()', function () {
 
     describe('when true', function () {
       before(function () {
-        this.server = createServer(fixtures, {'fallthrough': true})
+        this.server = createServer({default: fixtures}, {'fallthrough': true})
       })
 
       it('should fall-through when OPTIONS request', function (done) {
@@ -807,6 +808,31 @@ describe('serveStatic()', function () {
       .get('/static')
       .expect('Location', '/static/')
       .expect(301, done)
+    })
+  })
+  
+  describe('when using multihost', function () {
+    var server
+    var agent
+    before(function () {
+      server = createServer({default: fixtures, 'localhost:3009': other})
+      server.listen(3009)
+      agent = request.agent('localhost:3009')
+    })
+    it('should return other\'s folder todo.html', function (done) {
+      agent
+      .get('/todo.html')
+      .expect(200, '<li>rice</li>', done)
+    })
+    it('should return other\'s folder empty.txt', function (done) {
+      agent
+      .get('/empty.txt')
+      .expect(200, '', done)
+    })
+    it('should return 404', function (done) {
+      agent
+      .get('/todo.txt')
+      .expect(404, done)
     })
   })
 })
