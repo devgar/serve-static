@@ -14,7 +14,7 @@ describe('serveStatic()', function () {
   describe('basic operations', function () {
     var server
     before(function () {
-      server = createServer()
+      server = createServer( {default: relative})
     })
 
     it('should require root path', function () {

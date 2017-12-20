@@ -27,21 +27,21 @@ var url = require('url')
 
 module.exports = serveStatic
 module.exports.mime = send.mime
-
+var tk = false
 /**
  * @param {string} root
  * @param {object} [options]
  * @return {function}
  * @public
  */
-
+// TODO : Enable only one arg calling OR root as object { host : root }
 function serveStatic (root, options) {
   if (!root) {
     throw new TypeError('root path required')
   }
 
-  if (typeof root !== 'string') {
-    throw new TypeError('root path must be a string')
+  if (typeof root !== 'string' && typeof root !== 'object') {
+    throw new TypeError('root path must be a string or object')
   }
 
   // copy options object
@@ -62,7 +62,13 @@ function serveStatic (root, options) {
 
   // setup options for send
   opts.maxage = opts.maxage || opts.maxAge || 0
-  opts.root = resolve(root)
+  if(typeof root == 'object')
+  {
+    if(!root.default) throw new Error("root doesn't cotain default path")
+    opts.root = resolve(root.default)
+  }
+  else
+    opts.root = resolve(root)
 
   // construct directory listener
   var onDirectory = redirect
@@ -91,9 +97,23 @@ function serveStatic (root, options) {
     if (path === '/' && originalUrl.pathname.substr(-1) !== '/') {
       path = ''
     }
+    
+    var sendOpts = Object.create(opts || null)
+    
+    if(typeof root == 'object')
+    {
+      if( root[req.headers.host] )
+      { // Exists
+        sendOpts.root = resolve(root[req.headers.host])
+      }
+      else
+      {
+        // Throw Error or send Default
+      }
+    }
 
     // create send stream
-    var stream = send(req, path, opts)
+    var stream = send(req, path, sendOpts)
 
     // add directory handler
     stream.on('directory', onDirectory)
